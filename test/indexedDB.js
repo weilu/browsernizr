@@ -1,5 +1,6 @@
 var Modernizr = require('./../lib/Modernizr');
 var prefixed = require('./../lib/prefixed');
+var addTest = require('./../lib/addTest');
 
 /*!
 {
@@ -7,7 +8,8 @@ var prefixed = require('./../lib/prefixed');
   "property": "indexeddb",
   "caniuse": "indexeddb",
   "tags": ["storage"],
-  "polyfills": ["indexeddb"]
+  "polyfills": ["indexeddb"],
+  "async": true
 }
 !*/
 /* DOC
@@ -21,5 +23,38 @@ Detects support for the IndexedDB client-side storage API (final spec).
   // - Firefox shipped moz_indexedDB before FF4b9, but since then has been mozIndexedDB
   // For speed, we don't test the legacy (and beta-only) indexedDB
 
-  Modernizr.addTest('indexeddb', !!prefixed("indexedDB", window));
+  Modernizr.addAsyncTest(function(){
+    var indexeddb = prefixed('indexedDB', window);
+
+    if(!!indexeddb) {
+      var testDBName = 'modernizr-' + Math.random();
+      var req = indexeddb.open(testDBName);
+
+      req.onerror = function(){
+        if(req.error && req.error.name === 'InvalidStateError') {
+          addTest('indexeddb', false);
+        } else{
+          addTest('indexeddb', true);
+          detectDeleteDatabase(indexeddb, testDBName);
+        }
+      };
+
+      req.onsuccess = function(){
+        addTest('indexeddb', true);
+        detectDeleteDatabase(indexeddb, testDBName);
+      };
+    } else {
+      addTest('indexeddb', false);
+    }
+  });
+
+  function detectDeleteDatabase(indexeddb, testDBName){
+    var deleteReq = indexeddb.deleteDatabase(testDBName);
+    deleteReq.onsuccess = function(){
+      addTest('indexeddb.deletedatabase', true);
+    };
+    deleteReq.onerror = function(){
+      addTest('indexeddb.deletedatabase', false);
+    };
+  }
 
